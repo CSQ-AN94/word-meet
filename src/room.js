@@ -1,4 +1,4 @@
-import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js?v=6208c17a40e2';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js?v=4338c59b50a7';
 
 export function cleanName(value) {
   if (typeof value !== 'string') throw new Error('请输入昵称');

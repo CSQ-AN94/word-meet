@@ -12,3 +12,35 @@
 .input-hint,.room-footnote{color:#757c69}.player-state{color:#6c755f}
 .drawn-note{transform:none}.eyebrow{letter-spacing:1px}
 @media(max-width:760px){.word-illustration{display:none}}
+
+/* End-of-game route: two player lanes merge at the shared final word. */
+.is-complete .history-section{width:100%;margin:42px auto 0;padding:0;border:0}
+.is-complete .game-controls{width:100%;margin-top:22px}
+.is-complete .history-heading{margin-bottom:28px}
+.is-complete .history-heading h3{font:600 28px/1.5 var(--serif);letter-spacing:0}
+.is-complete .history-heading>span{font-size:12px;letter-spacing:0;color:var(--muted)}
+.is-complete .history-labels{grid-template-columns:36px minmax(0,1fr) minmax(0,1fr);gap:18px;padding:0 0 14px;font-size:12px}
+.journey-step{display:grid;grid-template-columns:36px minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:stretch;padding-bottom:32px}
+.journey-step:last-child{padding-bottom:0}
+.journey-round{align-self:center;color:var(--muted);font:13px/1.4 ui-monospace,"SFMono-Regular",Consolas,monospace}
+.journey-word{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;min-height:88px;padding:17px 20px;border:1px solid var(--line);border-radius:6px;background:var(--white);font:24px/1.5 var(--serif);text-align:center}
+.journey-word>bdi{display:block;max-width:100%;overflow-wrap:anywhere}
+.journey-own{background:#f8e8de;border-color:#e9cabb}
+.journey-other{background:#e9eee4;border-color:#cedac7}
+.journey-step:not(:last-child)>.journey-word:after{content:"";position:absolute;top:100%;left:50%;height:24px;border-left:1px solid #b0baa5}
+.journey-step:not(:last-child)>.journey-word:before{content:"";position:absolute;top:calc(100% + 17px);left:calc(50% - 3px);width:6px;height:6px;border-right:1px solid #b0baa5;border-bottom:1px solid #b0baa5;transform:rotate(45deg)}
+.journey-merged{grid-column:2/-1;min-height:102px;background:#e5eddb;border-color:#b8cba8;color:#506f43}
+.journey-merged>small{font:11px/1.5 var(--sans);color:#7c916d}
+.journey-merged>bdi{font-size:30px}
+@media(max-width:760px){
+  .is-complete .history-section{margin-top:32px}
+  .is-complete .history-heading{margin-bottom:22px}
+  .is-complete .history-heading h3{font-size:24px}
+  .is-complete .history-heading>span{font-size:11px}
+  .is-complete .history-labels,.journey-step{grid-template-columns:28px minmax(0,1fr) minmax(0,1fr);gap:10px}
+  .is-complete .history-labels{font-size:11px}
+  .journey-round{font-size:11px}
+  .journey-word{min-height:76px;padding:14px 12px;font-size:20px}
+  .journey-merged{min-height:92px}
+  .journey-merged>bdi{font-size:26px}
+}

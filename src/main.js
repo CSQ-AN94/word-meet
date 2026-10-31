@@ -1,5 +1,5 @@
-import { GameSession, parseRoomCode } from './game.js?v=6208c17a40e2';
-import { RoomConnection, cleanName } from './room.js?v=6208c17a40e2';
+import { GameSession, parseRoomCode } from './game.js?v=4338c59b50a7';
+import { RoomConnection, cleanName } from './room.js?v=4338c59b50a7';
 
 const $ = (id) => document.getElementById(id);
 const state = { mode: 'create', busy: false, inRoom: false, connected: false, code: '', role: '', game: null, network: null, names: [], seat: 0, protocolError: false };
@@ -181,6 +181,9 @@ function renderGame() {
   const revealed = view.phase !== 'writing';
   const matched = view.phase === 'matched';
   const active = state.connected && !state.protocolError;
+  $('game').classList.toggle('is-complete', matched);
+  $('round-board').hidden = matched;
+  $('result-message').hidden = matched;
   const key = `${state.game.sessionId}-${view.match}-${view.round}`;
   if (key !== renderedRound) {
     $('word-input').value = '';
@@ -224,27 +227,51 @@ function renderGame() {
   $('next-button').disabled = !active || view.ready[own];
   $('next-button').textContent = view.ready[own] ? '等待对方准备…' : matched ? '再来一局' : '继续联想 →';
   $('ready-note').textContent = view.ready[own] ? '你已准备，等待对方确认。' : view.ready[other] ? '对方已准备，点击即可继续。' : matched ? '双方确认后开始新的一局。' : '双方准备后开始下一轮。';
-  const historyKey = `${state.game.sessionId}-${view.match}-${view.history.length}`;
+  const historyKey = `${state.game.sessionId}-${view.match}-${view.history.length}-${matched}`;
   $('history-section').hidden = view.history.length === 0;
+  $('history-title').textContent = matched ? '本局总览' : '对局记录';
+  $('history-title').setAttribute('aria-level', matched ? '2' : '3');
   if (historyKey !== renderedHistory) {
+    if (matched) $('game-controls').before($('history-section'));
+    else $('game-controls').after($('history-section'));
     $('history-list').replaceChildren(...view.history.map((entry) => {
       const li = document.createElement('li');
-      li.className = 'history-row' + (entry.matched ? ' matched' : '');
+      li.className = (matched ? 'journey-step' : 'history-row') + (entry.matched ? ' matched' : '');
       const number = document.createElement('span');
       number.textContent = String(entry.round).padStart(2, '0');
+      number.className = matched ? 'journey-round' : '';
+      number.setAttribute('aria-label', `第 ${entry.round} 轮`);
       li.append(number);
-      for (const index of [own, other]) {
+      if (matched && entry.matched) {
+        const shared = document.createElement('div');
+        shared.className = 'journey-word journey-merged';
+        const label = document.createElement('small');
+        label.textContent = '双方相同';
         const word = document.createElement('bdi');
-        word.textContent = entry.words[index];
-        li.append(word);
+        word.textContent = entry.words[own];
+        shared.append(label, word);
+        li.append(shared);
+      } else {
+        for (const index of [own, other]) {
+          const word = document.createElement('bdi');
+          word.textContent = entry.words[index];
+          if (matched) {
+            const node = document.createElement('div');
+            node.className = 'journey-word ' + (index === own ? 'journey-own' : 'journey-other');
+            node.append(word);
+            li.append(node);
+          } else li.append(word);
+        }
       }
       return li;
     }));
-    $('history-count').textContent = `${String(view.history.length).padStart(2, '0')} ROUND${view.history.length === 1 ? '' : 'S'}`;
+    $('history-count').textContent = matched ? `共 ${view.history.length} 轮` : `${String(view.history.length).padStart(2, '0')} ROUND${view.history.length === 1 ? '' : 'S'}`;
     renderedHistory = historyKey;
   }
   if (matched && celebrated !== key) {
     celebrated = key;
+    $('history-title').tabIndex = -1;
+    $('history-title').focus();
     celebrate();
   }
 }

@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5f2eb">
-  <meta name="description" content="同词相遇，一个两个人的联想小游戏。写下各自的词语，一轮轮靠近，直到想到一起。创建房间，邀请朋友，在线一起玩。">
-  <title>同词相遇 · 想到一起</title>
+  <meta name="description" content="同词相遇，双人在线联想游戏。两人分别输入词语，提交后同时揭晓，继续联想直到词语相同。支持房间码和邀请链接。">
+  <title>同词相遇 · 双人联想游戏</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./src/style.css">
   <script defer src="./vendor/peerjs.min.js"></script>
@@ -25,95 +25,95 @@
     <main id="main">
       <section id="home" class="home" aria-labelledby="hero-title">
         <div class="intro">
-          <p class="eyebrow"><span class="tiny-spark" aria-hidden="true">✳</span> A LITTLE GAME FOR TWO</p>
-          <h1 id="hero-title">从两个词，<br>走进<span class="underlined">同一个想法</span>。</h1>
-          <p class="hero-description">你写一个词，我写一个词。<br>让联想慢慢靠近，看看我们会在哪里相遇。</p>
+          <p class="eyebrow">双人在线联想游戏</p>
+          <h1 id="hero-title">同词相遇</h1>
+          <p class="hero-description">两人各写一个词，提交后同时揭晓。<br>根据上一轮的两个词继续联想，直到双方写出相同的词。</p>
           <div class="word-illustration" aria-label="例如：月亮和兔子，可以联想到玉兔">
-            <span class="drawn-note">比如，我们可能这样相遇</span>
+            <span class="drawn-note">联想示例</span>
             <div class="example-pair"><span class="example-word coral-word">月亮<span class="bubble-tail" aria-hidden="true"></span></span><span class="example-plus" aria-hidden="true">+</span><span class="example-word sage-word">兔子<span class="bubble-tail" aria-hidden="true"></span></span></div>
             <svg class="example-arrows" viewBox="0 0 300 48" aria-hidden="true"><path d="M64 4Q64 37 137 37M236 4Q236 37 163 37M145 28l5 11 6-11"/></svg>
-            <span class="example-result"><span aria-hidden="true">✧</span> 玉兔 <span aria-hidden="true">✧</span><small>啊，想到一起了。</small></span>
+            <span class="example-result">玉兔<small>两人都写「玉兔」即成功</small></span>
           </div>
         </div>
 
         <div class="entry-wrap">
           <div class="entry-card">
-            <div class="card-topline"><span class="live-dot"></span> 把同频，留给两个人 <span class="card-number">01 / 02</span></div>
-            <h2>一起想点什么。</h2>
-            <p class="muted entry-description" id="entry-description">建一个小房间，等一个懂你的人。</p>
+            <div class="card-topline"><span class="live-dot"></span> 每个房间最多 2 人 <span class="card-number">在线联机</span></div>
+            <h2>开始游戏</h2>
+            <p class="muted entry-description" id="entry-description">创建房间，把邀请链接发给另一位玩家。</p>
             <div class="entry-tabs" role="tablist" aria-label="进入游戏的方式">
               <button type="button" role="tab" aria-selected="true" aria-controls="entry-panel" id="create-tab" tabindex="0">创建房间</button>
               <button type="button" role="tab" aria-selected="false" aria-controls="entry-panel" id="join-tab" tabindex="-1">加入房间</button>
             </div>
             <form id="entry-form" autocomplete="off">
               <div id="entry-panel" role="tabpanel" aria-labelledby="create-tab">
-                <label for="nickname">怎么称呼你 <span>给这次相遇起个名字</span></label>
+                <label for="nickname">昵称 <span>1–12 字</span></label>
                 <input id="nickname" name="nickname" maxlength="24" placeholder="你的昵称" required autocomplete="nickname" aria-describedby="entry-error">
                 <div id="room-code-field" hidden>
                   <label for="room-code">房间码 <span>也可以直接粘贴邀请链接</span></label>
                   <input id="room-code" name="room-code" placeholder="例如 ABCD-2345" autocapitalize="characters" spellcheck="false" aria-describedby="entry-error">
                 </div>
                 <p id="entry-error" class="form-error" role="alert" hidden></p>
-                <button class="button primary entry-submit" type="submit" id="entry-submit"><span id="entry-submit-text">创建我们的房间</span><span aria-hidden="true">↗</span></button>
+                <button class="button primary entry-submit" type="submit" id="entry-submit"><span id="entry-submit-text">创建房间</span><span aria-hidden="true">↗</span></button>
               </div>
             </form>
             <div class="entry-benefits"><span>两人一间</span><span>不用注册</span><span>不限轮数</span></div>
           </div>
-          <p class="under-card-note"><span aria-hidden="true">↳</span> 邀请链接一发，朋友就能来。</p>
+          <p class="under-card-note">通过邀请链接或房间码加入。</p>
         </div>
 
         <div class="how-strip">
-          <div><span class="step-number">01</span><p><strong>各想一个词</strong><span>第一轮，想到什么就写什么。</span></p></div>
-          <div><span class="step-number">02</span><p><strong>一起揭晓，再联想</strong><span>从这两个词，找新的共同联想。</span></p></div>
-          <div><span class="step-number">03</span><p><strong>写到一样，就相遇</strong><span>没有输赢，只有越来越近的默契。</span></p></div>
+          <div><span class="step-number">01</span><p><strong>分别输入词语</strong><span>第一轮可以输入任意词语。</span></p></div>
+          <div><span class="step-number">02</span><p><strong>同时揭晓</strong><span>双方提交后，才能看到对方的词。</span></p></div>
+          <div><span class="step-number">03</span><p><strong>继续联想</strong><span>结合上轮两个词，写到相同即成功。</span></p></div>
         </div>
       </section>
 
       <section id="room" class="room" aria-label="双人游戏房间" hidden>
         <div class="room-toolbar">
-          <div class="room-id-wrap"><span class="eyebrow">OUR LITTLE ROOM</span><button type="button" class="room-code-button" id="copy-code" aria-label="复制房间码"><span id="display-code"></span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg></button></div>
+          <div class="room-id-wrap"><span class="eyebrow">房间码</span><button type="button" class="room-code-button" id="copy-code" aria-label="复制房间码"><span id="display-code"></span><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg></button></div>
           <div class="toolbar-actions"><span class="connection-status" id="connection-status" role="status">正在连接</span><button type="button" class="button small secondary" id="invite-button">邀请朋友 <span aria-hidden="true">↗</span></button><button type="button" class="text-button leave-button" id="leave-button">离开</button></div>
         </div>
 
         <div id="connection-banner" class="connection-banner" role="alert" hidden><p id="connection-message"></p><button type="button" class="button small secondary" id="reconnect-button">重新连接</button></div>
 
         <div id="waiting" class="waiting-scene">
-          <p class="eyebrow">ONE THOUGHT AWAY</p>
-          <h2>另一半灵感，<br>正在来的路上。</h2>
-          <p class="muted">把房间分享给朋友。等 TA 进来，我们就开始。</p>
+          <p class="eyebrow">房间已创建</p>
+          <h2>等待另一位玩家</h2>
+          <p class="muted">复制邀请链接，或让对方输入房间码加入。</p>
           <div class="waiting-seats">
             <div class="waiting-seat"><span class="avatar avatar-coral" aria-hidden="true">✳</span><bdi id="waiting-name">你</bdi><small><span class="live-dot"></span> 已就位</small></div>
             <div class="waiting-connector" aria-hidden="true">· · ·</div>
-            <div class="waiting-seat empty-seat"><span class="avatar avatar-empty" aria-hidden="true">?</span><span>等一个朋友</span><small>这里，留给 TA</small></div>
+            <div class="waiting-seat empty-seat"><span class="avatar avatar-empty" aria-hidden="true">?</span><span>等待加入</span><small>还差 1 人</small></div>
           </div>
           <div class="invite-field"><label for="invite-url" class="sr-only">房间邀请链接</label><input id="invite-url" readonly><button type="button" class="button primary" id="copy-invite">复制邀请链接</button></div>
           <p class="room-footnote">游戏时保持页面打开。刷新或重新连接会开始新的一局。</p>
         </div>
 
         <div id="game" class="game-scene" hidden>
-          <div class="round-heading"><p class="eyebrow" id="match-label">THINK · REVEAL · MEET</p><h2 id="round-title">第 <span id="round-number">01</span> 轮</h2><p id="round-description">先不约而同，再慢慢靠近。</p></div>
-          <div id="previous-words" class="previous-words" hidden><span>从上一轮出发</span><bdi id="previous-own"></bdi><span aria-hidden="true">＋</span><bdi id="previous-other"></bdi></div>
+          <div class="round-heading"><p class="eyebrow" id="match-label">双人联想</p><h2 id="round-title">第 <span id="round-number">01</span> 轮</h2><p id="round-description">第一轮可以输入任意词语。</p></div>
+          <div id="previous-words" class="previous-words" hidden><span>上一轮词语</span><bdi id="previous-own"></bdi><span aria-hidden="true">＋</span><bdi id="previous-other"></bdi></div>
           <div class="player-cards" id="player-cards">
-            <article class="player-card own-card"><div class="player-header"><span class="avatar mini avatar-coral" aria-hidden="true">✳</span><bdi id="own-name">你</bdi><span class="you-tag">你</span><span class="player-state" id="own-status">正在想</span></div><div class="word-display"><bdi id="own-word">?</bdi><span class="word-subtitle" id="own-word-note">一个词，就是一次出发</span></div><div class="card-bottom">YOUR THOUGHT</div></article>
+            <article class="player-card own-card"><div class="player-header"><span class="avatar mini avatar-coral" aria-hidden="true">✳</span><bdi id="own-name">你</bdi><span class="you-tag">你</span><span class="player-state" id="own-status">未提交</span></div><div class="word-display"><bdi id="own-word">?</bdi><span class="word-subtitle" id="own-word-note">输入后点击「锁定词语」</span></div><div class="card-bottom">你的词语</div></article>
             <div class="between-cards" id="between-cards" aria-hidden="true">&amp;</div>
-            <article class="player-card other-card"><div class="player-header"><span class="avatar mini avatar-sage" aria-hidden="true">✦</span><bdi id="other-name">朋友</bdi><span class="player-state" id="other-status">正在想</span></div><div class="word-display"><bdi id="other-word">?</bdi><span class="word-subtitle" id="other-word-note">给 TA 一点点灵感的时间</span></div><div class="card-bottom">THEIR THOUGHT</div></article>
+            <article class="player-card other-card"><div class="player-header"><span class="avatar mini avatar-sage" aria-hidden="true">✦</span><bdi id="other-name">对方</bdi><span class="player-state" id="other-status">未提交</span></div><div class="word-display"><bdi id="other-word">?</bdi><span class="word-subtitle" id="other-word-note">对方尚未提交</span></div><div class="card-bottom">对方的词语</div></article>
           </div>
           <div class="game-controls">
             <form id="word-form" autocomplete="off"><label for="word-input" id="word-label">这一轮，你想到了什么？</label><div class="word-input-row"><input id="word-input" name="word" placeholder="写下你的词语…" maxlength="40" required spellcheck="false" aria-describedby="word-hint word-error"><button class="button primary" type="submit" id="word-submit">锁定词语 <span aria-hidden="true">↗</span></button></div><p id="word-hint" class="input-hint">1–20 字 · 双方锁定后同时揭晓 · Enter 提交</p></form>
-            <div id="submitted-message" class="submitted-message" role="status" hidden><span class="locked-icon" aria-hidden="true">✓</span><p>你的词语已锁定<small>先替你保密，等 TA 一起揭晓。</small></p><span class="waiting-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
+            <div id="submitted-message" class="submitted-message" role="status" hidden><span class="locked-icon" aria-hidden="true">✓</span><p>你的词语已锁定<small>等待对方提交，双方提交后同时揭晓。</small></p><span class="waiting-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
             <div id="round-result" class="round-result" hidden><p id="result-message" role="status"></p><button type="button" class="button primary" id="next-button">继续联想 <span aria-hidden="true">→</span></button><p class="input-hint" id="ready-note">两个人都准备好，就开始下一轮。</p></div>
             <p id="word-error" class="form-error" role="alert" hidden></p>
           </div>
-          <section class="history-section" id="history-section" aria-labelledby="history-title" hidden><div class="history-heading"><h3 id="history-title">我们的联想足迹</h3><span id="history-count"></span></div><div class="history-labels"><span>轮次</span><bdi id="history-own-label">你</bdi><bdi id="history-other-label">朋友</bdi></div><ol id="history-list"></ol><p class="history-endnote">每一个不一样，都在让我们更近一点。</p></section>
+          <section class="history-section" id="history-section" aria-labelledby="history-title" hidden><div class="history-heading"><h3 id="history-title">对局记录</h3><span id="history-count"></span></div><div class="history-labels"><span>轮次</span><bdi id="history-own-label">你</bdi><bdi id="history-other-label">对方</bdi></div><ol id="history-list"></ol></section>
         </div>
       </section>
     </main>
 
-    <footer class="site-footer"><span>想到一起，就算相遇。</span><span>MADE FOR TWO <span aria-hidden="true">✳</span></span></footer>
+    <footer class="site-footer"><span>双人在线联想游戏</span><span>WORD MEET</span></footer>
   </div>
 
-  <dialog id="rules-dialog" class="dialog" aria-labelledby="rules-title"><button type="button" class="dialog-close" aria-label="关闭玩法说明" data-close-dialog>×</button><p class="eyebrow">HOW WE MEET</p><h2 id="rules-title">不用猜答案，<br>只要想到一起。</h2><ol class="rules-list"><li><strong>先各想一个词。</strong><p>第一轮随便想，不要商量，也别提前告诉对方。</p></li><li><strong>双方锁定，一起揭晓。</strong><p>看到两个词后，下一轮各自写一个能关联它们的新词。</p></li><li><strong>一轮轮靠近，直到相遇。</strong><p>两人的词语完全一样，就成功了。然后，还可以再来一局。</p></li></ol><div class="rules-example">月亮 ＋ 兔子 <span>→</span> 玉兔 ＋ 玉兔 <span>→</span> <strong>相遇！</strong></div><p class="dialog-note">去掉首尾空格后严格比较；大小写、标点和词内空格都算不同。无需限时，慢慢想。游戏时请保持页面打开。</p><button type="button" class="button primary full-width" data-close-dialog>知道啦，开始相遇</button></dialog>
-  <dialog id="share-dialog" class="dialog" aria-labelledby="share-title"><button type="button" class="dialog-close" aria-label="关闭邀请" data-close-dialog>×</button><p class="eyebrow">SAVE A SEAT FOR SOMEONE</p><h2 id="share-title">把这次相遇，<br>发给 TA。</h2><label for="share-url">邀请链接</label><input id="share-url" readonly><p class="dialog-note" id="share-note">复制链接发给朋友，对方打开后输入昵称就能加入。房间最多两人。</p><button type="button" class="button primary full-width" id="share-copy">复制链接</button><button type="button" class="button secondary full-width native-share" id="native-share" hidden>通过其他应用分享</button></dialog>
+  <dialog id="rules-dialog" class="dialog" aria-labelledby="rules-title"><button type="button" class="dialog-close" aria-label="关闭玩法说明" data-close-dialog>×</button><p class="eyebrow">游戏规则</p><h2 id="rules-title">怎么玩</h2><ol class="rules-list"><li><strong>分别输入词语。</strong><p>第一轮各写一个任意词语，不要提前告诉对方。</p></li><li><strong>双方提交后同时揭晓。</strong><p>下一轮各写一个能关联上轮两个词的新词。</p></li><li><strong>词语相同即成功。</strong><p>如果不同，就继续联想。成功后可以再来一局。</p></li></ol><div class="rules-example">月亮 ＋ 兔子 <span>→</span> 玉兔 ＋ 玉兔 <span>→</span> <strong>成功</strong></div><p class="dialog-note">去掉首尾空格后严格比较；大小写、标点和词内空格都算不同。不限时。游戏时请保持页面打开。</p><button type="button" class="button primary full-width" data-close-dialog>知道了</button></dialog>
+  <dialog id="share-dialog" class="dialog" aria-labelledby="share-title"><button type="button" class="dialog-close" aria-label="关闭邀请" data-close-dialog>×</button><p class="eyebrow">邀请玩家</p><h2 id="share-title">分享房间</h2><label for="share-url">邀请链接</label><input id="share-url" readonly><p class="dialog-note" id="share-note">对方打开链接后输入昵称即可加入。每个房间最多两人。</p><button type="button" class="button primary full-width" id="share-copy">复制链接</button><button type="button" class="button secondary full-width native-share" id="native-share" hidden>通过其他应用分享</button></dialog>
   <div class="toast" id="toast" role="status" hidden></div>
   <div id="confetti" class="confetti" aria-hidden="true"></div>
   <noscript><div class="noscript">这个小游戏需要启用 JavaScript 才能联机。</div></noscript>

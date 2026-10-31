@@ -28,7 +28,7 @@ function setBusy(busy) {
   $('room-code').disabled = busy;
   $('create-tab').disabled = busy;
   $('join-tab').disabled = busy;
-  $('entry-submit-text').textContent = busy ? '正在连接…' : state.mode === 'create' ? '创建我们的房间' : '去和 TA 相遇';
+  $('entry-submit-text').textContent = busy ? '正在连接…' : state.mode === 'create' ? '创建房间' : '加入房间';
 }
 
 function setMode(mode) {
@@ -41,7 +41,7 @@ function setMode(mode) {
   $('entry-panel').setAttribute('aria-labelledby', mode + '-tab');
   $('room-code-field').hidden = mode !== 'join';
   $('room-code').required = mode === 'join';
-  $('entry-description').textContent = mode === 'create' ? '建一个小房间，等一个懂你的人。' : '带着房间码，去赴一场灵感之约。';
+  $('entry-description').textContent = mode === 'create' ? '创建房间，把邀请链接发给另一位玩家。' : '输入房间码或邀请链接，加入已有房间。';
   showError('entry-error', '');
   setBusy(false);
 }
@@ -102,7 +102,7 @@ function startConnection(role, code) {
       enterRoom(event.code);
       $('waiting').hidden = false;
       $('game').hidden = true;
-      connectionStatus('等 TA 加入', 'online');
+      connectionStatus('等待玩家加入', 'online');
     } else if (event.type === 'connected') {
       enterRoom(event.code);
       state.connected = true;
@@ -138,7 +138,7 @@ function startConnection(role, code) {
     } else if (event.type === 'signaling') {
       if (state.inRoom) connectionStatus('正在恢复连接', 'connecting');
     } else if (event.type === 'signaling-restored') {
-      if (state.inRoom) connectionStatus(state.connected ? '两人已连接' : '等 TA 加入', 'online');
+      if (state.inRoom) connectionStatus(state.connected ? '两人已连接' : '等待玩家加入', 'online');
     } else if (event.type === 'error') {
       state.connected = false;
       setBusy(false);
@@ -177,8 +177,8 @@ function renderGame() {
     $('word-hint').textContent = '1–20 字 · 双方锁定后同时揭晓 · Enter 提交';
   }
   $('round-number').textContent = String(view.round).padStart(2, '0');
-  $('round-description').textContent = matched ? '原来，你也想到了这里。' : revealed ? '这两个词，会把我们带向哪里？' : view.round === 1 ? '第一轮，想到什么就写什么。' : '从上轮的两个词，联想一个新的共同词语。';
-  $('match-label').textContent = matched ? 'SAME WORD, SAME WAVELENGTH' : 'THINK · REVEAL · MEET';
+  $('round-description').textContent = matched ? '双方词语相同，本局结束。' : revealed ? '根据这两个词，继续联想。' : view.round === 1 ? '第一轮可以输入任意词语。' : '结合上轮的两个词，输入一个新的关联词。';
+  $('match-label').textContent = matched ? '游戏成功' : '双人联想';
   $('own-name').textContent = state.names[own];
   $('other-name').textContent = state.names[other];
   $('history-own-label').textContent = state.names[own] + '（你）';
@@ -195,11 +195,11 @@ function renderGame() {
     $(prefix + '-word').textContent = word || (view.committed[index] ? '•••' : '?');
     $(prefix + '-word').classList.toggle('has-word', Boolean(word));
     $(prefix + '-word').classList.toggle('long-word', Boolean(word && [...word].length > 6));
-    $(prefix + '-status').textContent = revealed ? (matched ? '同频了' : '已揭晓') : view.committed[index] ? '✓ 已锁定' : '正在想';
+    $(prefix + '-status').textContent = revealed ? (matched ? '相同' : '已揭晓') : view.committed[index] ? '✓ 已锁定' : '未提交';
     $(prefix + '-status').dataset.locked = String(view.committed[index]);
   }
-  $('own-word-note').textContent = revealed ? (matched ? '这次，和你想到了一起' : '带着这个词，继续出发') : view.committed[own] ? '你的答案已锁定，暂时替你保密' : '一个词，就是一次出发';
-  $('other-word-note').textContent = revealed ? (matched ? '刚刚好，是同一个想法' : '试着走进 TA 的脑回路') : view.committed[other] ? 'TA 已锁定，等你一起揭晓' : '给 TA 一点点灵感的时间';
+  $('own-word-note').textContent = revealed ? (matched ? '双方词语相同' : '已揭晓') : view.committed[own] ? '已锁定，等待对方提交' : '输入后点击「锁定词语」';
+  $('other-word-note').textContent = revealed ? (matched ? '双方词语相同' : '已揭晓') : view.committed[other] ? '对方已锁定，等待你提交' : '对方尚未提交';
   $('player-cards').classList.toggle('revealed', revealed);
   $('player-cards').classList.toggle('matched', matched);
   $('between-cards').textContent = matched ? '=' : '&';
@@ -208,10 +208,10 @@ function renderGame() {
   $('word-submit').disabled = !active || view.submitting;
   $('submitted-message').hidden = revealed || !view.committed[own];
   $('round-result').hidden = !revealed;
-  $('result-message').textContent = matched ? `第 ${view.round} 轮，我们相遇了。` : '再靠近一点，也许下一轮就会相遇。';
+  $('result-message').textContent = matched ? `成功，共用 ${view.round} 轮。` : '词语不同，继续下一轮。';
   $('next-button').disabled = !active || view.ready[own];
-  $('next-button').textContent = view.ready[own] ? '等 TA 准备好…' : matched ? '再来一次相遇 ↗' : '继续联想 →';
-  $('ready-note').textContent = view.ready[own] ? '你已准备好，等 TA 点击就继续。' : view.ready[other] ? 'TA 已准备好，就等你啦。' : matched ? '两个人都愿意，就再开启一局。' : '两个人都准备好，就开始下一轮。';
+  $('next-button').textContent = view.ready[own] ? '等待对方准备…' : matched ? '再来一局' : '继续联想 →';
+  $('ready-note').textContent = view.ready[own] ? '你已准备，等待对方确认。' : view.ready[other] ? '对方已准备，点击即可继续。' : matched ? '双方确认后开始新的一局。' : '双方准备后开始下一轮。';
   const historyKey = `${state.game.sessionId}-${view.match}-${view.history.length}`;
   $('history-section').hidden = view.history.length === 0;
   if (historyKey !== renderedHistory) {
@@ -272,7 +272,7 @@ async function copy(text, field) {
   try {
     if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
     await navigator.clipboard.writeText(text);
-    toast('复制好了，发给 TA 吧。');
+    toast('邀请链接已复制');
     return true;
   } catch {
     if (field) {
@@ -287,7 +287,7 @@ async function copy(text, field) {
 
 function openShare() {
   $('share-url').value = inviteURL();
-  $('share-note').textContent = state.connected ? '房间已经坐满了两个人。链接仍可用，重新加入会开启新局。' : '复制链接发给朋友，对方打开后输入昵称就能加入。房间最多两人。';
+  $('share-note').textContent = state.connected ? '房间已有两人。重新加入会开始新局。' : '对方打开链接后输入昵称即可加入。每个房间最多两人。';
   $('native-share').hidden = typeof navigator.share !== 'function';
   $('share-dialog').showModal();
 }
@@ -360,8 +360,8 @@ $('copy-code').addEventListener('click', async () => {
   } catch { openShare(); }
 });
 $('native-share').addEventListener('click', async () => {
-  try { await navigator.share({ title: '同词相遇 · 想到一起', text: '来和我玩一局同词相遇吧。', url: inviteURL() }); }
-  catch (error) { if (error.name !== 'AbortError') toast('分享没有完成，可以复制链接发给 TA。'); }
+  try { await navigator.share({ title: '同词相遇 · 双人联想游戏', text: '邀请你加入同词相遇房间。', url: inviteURL() }); }
+  catch (error) { if (error.name !== 'AbortError') toast('分享未完成，可以复制邀请链接。'); }
 });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') state.network?.ping(); });
 window.addEventListener('pagehide', () => state.network?.dispose());
@@ -373,6 +373,6 @@ if (new URLSearchParams(location.hash.slice(1)).has('room')) {
     const code = parseRoomCode(location.href);
     $('room-code').value = code.slice(0, 4) + '-' + code.slice(4);
     setMode('join');
-    $('entry-description').textContent = '朋友给你留了一个位置，填好昵称就出发。';
+    $('entry-description').textContent = '已收到房间邀请，输入昵称即可加入。';
   } catch { setMode('join'); showError('entry-error', '邀请链接里的房间码不完整，请让朋友重新分享。'); }
 }

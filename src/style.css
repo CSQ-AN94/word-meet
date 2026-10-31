@@ -10,3 +10,5 @@
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.confetti{display:none}}
 .primary{background:#be5038}.primary:hover:not(:disabled){background:#ac432e}
 .input-hint,.room-footnote{color:#757c69}.player-state{color:#6c755f}
+.drawn-note{transform:none}.eyebrow{letter-spacing:1px}
+@media(max-width:760px){.word-illustration{display:none}}

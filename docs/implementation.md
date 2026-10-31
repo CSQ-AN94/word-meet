@@ -24,6 +24,8 @@
 
 数据库权限检查确认：两张表均启用 RLS，anon/authenticated 均无直接表权限，anon 无私有 schema 的 USAGE 权限，只能调用公开房间函数。当前 Advisors 的“RLS 无策略”提示对应故意封闭的私有表；公开 SECURITY DEFINER 提示对应使用席位令牌鉴权的房间接口，并非 Supabase Auth 用户接口。函数固定空 search_path，轮询、发消息与退出前均校验令牌。参考 [私有表无策略提示](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)、[匿名可执行函数提示](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable) 和 [已登录用户可执行函数提示](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)。新建表的索引尚未有使用统计，保留用于消息轮询与过期清理。
 
-下一步切换 GitHub Pages 并验证公开网页对局。实际 Safari 和同学设备的跨网络可达性仍需由他们确认。
+GitHub Pages 已完成发布，分支提交 `6ef0efef95c5a1b108d6d39f90f5c6d94aed8c18` 的构建状态为 `built`，公开网页已加载模块版本 `6208c17a40e2`。通过内置浏览器从原网址创建房间并用邀请链接加入，正式 Supabase 项目上完成“月亮 / 兔子 → 玉兔 / 玉兔”两轮，双方均显示成功。单方锁词保密、双方准备和历史记录显示正常；已退出并关闭本次测试房间。截图保存在本地 `artifacts/supabase-live-game.jpg`。
+
+实际 Safari 和同学设备的跨网络可达性仍需由他们刷新并重新建房确认；未把同一台电脑的双标签测试写成不同设备实测。
 
 先前 Sites 部署虽返回成功，但公开访问在自动验证与用户 Safari 均返回 Cloudflare 403；已停止访问该入口，也没有把 GitHub Pages 指向它。

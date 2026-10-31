@@ -4,7 +4,7 @@
 
 [游戏入口](https://csq-an94.github.io/word-meet/) · [Supabase 注册与接入步骤](docs/supabase-setup.md)
 
-当前配置已接入初始化完成的 Supabase 免费项目。公开 HTTPS 接口、跨来源访问、并发加入与消息去重已验证。网页发布和浏览器检查记录见 [部署检查记录](docs/implementation.md)。
+当前版本已在原 GitHub Pages 入口上线，使用 Supabase 免费项目联机。公开 HTTPS 接口、跨来源访问、并发加入、消息去重和浏览器双人完整对局已验证。详见 [部署检查记录](docs/implementation.md)。
 
 ## 开始游戏
 

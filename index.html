@@ -90,6 +90,7 @@
         </div>
 
         <div id="game" class="game-scene" hidden>
+          <div id="round-board">
           <div class="round-heading"><p class="eyebrow" id="match-label">双人联想</p><h2 id="round-title">第 <span id="round-number">01</span> 轮</h2><p id="round-description">第一轮可以输入任意词语。</p></div>
           <div id="previous-words" class="previous-words" hidden><span>上一轮词语</span><bdi id="previous-own"></bdi><span aria-hidden="true">＋</span><bdi id="previous-other"></bdi></div>
           <div class="player-cards" id="player-cards">
@@ -97,7 +98,8 @@
             <div class="between-cards" id="between-cards" aria-hidden="true">&amp;</div>
             <article class="player-card other-card"><div class="player-header"><span class="avatar mini avatar-sage" aria-hidden="true">✦</span><bdi id="other-name">对方</bdi><span class="player-state" id="other-status">未提交</span></div><div class="word-display"><bdi id="other-word">?</bdi><span class="word-subtitle" id="other-word-note">对方尚未提交</span></div><div class="card-bottom">对方的词语</div></article>
           </div>
-          <div class="game-controls">
+          </div>
+          <div class="game-controls" id="game-controls">
             <form id="word-form" autocomplete="off"><label for="word-input" id="word-label">这一轮，你想到了什么？</label><div class="word-input-row"><input id="word-input" name="word" placeholder="写下你的词语…" maxlength="40" required spellcheck="false" aria-describedby="word-hint word-error"><button class="button primary" type="submit" id="word-submit">锁定词语 <span aria-hidden="true">↗</span></button></div><p id="word-hint" class="input-hint">1–20 字 · 双方锁定后同时揭晓 · Enter 提交</p></form>
             <div id="submitted-message" class="submitted-message" role="status" hidden><span class="locked-icon" aria-hidden="true">✓</span><p>你的词语已锁定<small>等待对方提交，双方提交后同时揭晓。</small></p><span class="waiting-dots" aria-hidden="true"><i></i><i></i><i></i></span></div>
             <div id="round-result" class="round-result" hidden><p id="result-message" role="status"></p><button type="button" class="button primary" id="next-button">继续联想 <span aria-hidden="true">→</span></button><p class="input-hint" id="ready-note">两个人都准备好，就开始下一轮。</p></div>

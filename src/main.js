@@ -75,9 +75,11 @@ function showConnectionBanner(message) {
   $('connection-banner').hidden = !message;
   $('connection-message').textContent = message;
   $('reconnect-button').textContent = state.role === 'host' ? '重新建房' : '重新连接';
+  $('reconnect-button').hidden = false;
 }
 
 function startConnection(role, code) {
+  const resumeToken = role === 'guest' && state.lastGuest?.code === code ? state.lastGuest.token : undefined;
   state.network?.dispose();
   state.role = role;
   state.connected = false;
@@ -106,7 +108,9 @@ function startConnection(role, code) {
     } else if (event.type === 'connected') {
       enterRoom(event.code);
       state.connected = true;
+      state.protocolError = false;
       state.seat = event.seat;
+      if (event.seat === 1) state.lastGuest = { code: event.code, token: network.token };
       state.names = event.seat === 0 ? [state.name, event.otherName] : [event.otherName, state.name];
       $('waiting').hidden = true;
       $('game').hidden = false;
@@ -125,6 +129,7 @@ function startConnection(role, code) {
       inbox = inbox.then(async () => {
         if (state.network === network && state.game === game && !state.protocolError) await game?.receive(event.message);
       }).catch((error) => {
+        if (state.network !== network || state.game !== game) return;
         state.protocolError = true;
         showError('word-error', error.message);
         showConnectionBanner('本局的信息校验出现问题，请重新连接后再玩。');
@@ -135,10 +140,17 @@ function startConnection(role, code) {
       connectionStatus('连接已断开', 'error');
       showConnectionBanner(event.message);
       renderGame();
-    } else if (event.type === 'signaling') {
-      if (state.inRoom) connectionStatus('正在恢复连接', 'connecting');
-    } else if (event.type === 'signaling-restored') {
-      if (state.inRoom) connectionStatus(state.connected ? '两人已连接' : '等待玩家加入', 'online');
+    } else if (event.type === 'retrying' || event.type === 'peer-offline') {
+      state.connected = false;
+      connectionStatus(event.type === 'retrying' ? '正在恢复连接' : '等待对方上线', 'connecting');
+      showConnectionBanner(event.message);
+      $('reconnect-button').hidden = true;
+      renderGame();
+    } else if (event.type === 'online') {
+      state.connected = event.connected;
+      connectionStatus(event.connected ? '两人已连接' : '等待玩家加入', 'online');
+      showConnectionBanner('');
+      renderGame();
     } else if (event.type === 'error') {
       state.connected = false;
       setBusy(false);
@@ -152,7 +164,7 @@ function startConnection(role, code) {
   state.network = network;
   try {
     if (role === 'host') network.host(state.name, code);
-    else network.join(state.name, code);
+    else network.join(state.name, code, resumeToken);
   } catch (error) {
     network.dispose();
     setBusy(false);

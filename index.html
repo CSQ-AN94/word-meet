@@ -7,10 +7,8 @@
   <meta name="description" content="同词相遇，双人在线联想游戏。两人分别输入词语，提交后同时揭晓，继续联想直到词语相同。支持房间码和邀请链接。">
   <title>同词相遇 · 双人联想游戏</title>
   <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-  <!-- Change the cache key when updating the stylesheet or entry script. -->
-  <link rel="stylesheet" href="./src/style.css?v=881f485">
-  <script defer src="./vendor/peerjs.min.js"></script>
-  <script type="module" src="./src/main.js?v=881f485"></script>
+  <link rel="stylesheet" href="./src/style.css">
+  <script type="module" src="./src/main.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">跳到游戏</a>
@@ -88,7 +86,7 @@
             <div class="waiting-seat empty-seat"><span class="avatar avatar-empty" aria-hidden="true">?</span><span>等待加入</span><small>还差 1 人</small></div>
           </div>
           <div class="invite-field"><label for="invite-url" class="sr-only">房间邀请链接</label><input id="invite-url" readonly><button type="button" class="button primary" id="copy-invite">复制邀请链接</button></div>
-          <p class="room-footnote">游戏时保持页面打开。刷新或重新连接会开始新的一局。</p>
+          <p class="room-footnote">游戏时保持页面打开。短暂断网会自动重连；刷新或手动重新加入会开始新局。</p>
         </div>
 
         <div id="game" class="game-scene" hidden>

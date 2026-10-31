@@ -4,13 +4,14 @@
   "private": true,
   "description": "同词相遇：两个人的在线联想小游戏",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "node scripts/serve.mjs",
     "start": "node scripts/serve.mjs",
-    "test": "node --test",
+    "test": "node --test test/*.test.js",
     "build": "node scripts/build.mjs",
     "preview": "node scripts/serve.mjs --dist"
-  },
-  "dependencies": { "peerjs": "1.5.5" }
+  }
 }

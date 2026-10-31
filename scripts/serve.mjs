@@ -13,12 +13,11 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url, 'http://localhost');
     let name = decodeURIComponent(url.pathname);
     if (name === '/') name = '/index.html';
-    if (root === project && name === '/vendor/peerjs.min.js') name = '/node_modules/peerjs/dist/peerjs.min.js';
     if (root === project && name === '/favicon.svg') name = '/public/favicon.svg';
     const target = path.resolve(root, '.' + name);
     const relative = path.relative(root, target);
     const allowed = root !== project || name === '/index.html' || name === '/public/favicon.svg' ||
-      name.startsWith('/src/') || name === '/node_modules/peerjs/dist/peerjs.min.js';
+      name.startsWith('/src/');
     if (relative.startsWith('..') || path.isAbsolute(relative) || !allowed) {
       response.writeHead(404).end('Not found');
       return;

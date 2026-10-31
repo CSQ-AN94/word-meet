@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { RoomConnection } from '../src/room.js';
 import { GameSession } from '../src/game.js';
-import { roomServer } from './support/http-server.js';
+import { roomServer, TEST_API_KEY } from './support/http-server.js';
 
 function player(t, endpoint) {
   const events = [];
@@ -17,7 +17,7 @@ function player(t, endpoint) {
     });
     if (event.type === 'message') inbox = inbox.then(() => game.receive(event.message)).catch((error) => notify({ type: 'error', message: error.message }));
     notify(event);
-  }, { endpoint });
+  }, { endpoint, apiKey: TEST_API_KEY });
   t.after(() => room.dispose());
   function wait(type, predicate = () => true) {
     const existing = events.find((event) => event.type === type && predicate(event));

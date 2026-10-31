@@ -1,4 +1,4 @@
-import { ROOM_API_URL } from './config.js';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
 
 export function cleanName(value) {
   if (typeof value !== 'string') throw new Error('请输入昵称');
@@ -11,10 +11,26 @@ class ApiError extends Error {
   constructor(message, status, code) { super(message); this.status = status; this.code = code; }
 }
 
+function checkConfig(endpoint, apiKey) {
+  if (!endpoint || !apiKey) throw new ApiError('房间服务尚未开通，请稍后再试', 400);
+  let url;
+  try { url = new URL(endpoint); } catch { throw new ApiError('房间服务地址配置无效，请稍后再试', 400); }
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) throw new ApiError('房间服务地址需要使用 HTTPS', 400);
+  if (url.pathname !== '/' || url.search || url.hash || url.username || url.password) throw new ApiError('房间服务地址配置无效，请稍后再试', 400);
+  let publicKey = /^sb_publishable_[A-Za-z0-9_-]+$/.test(apiKey);
+  if (!publicKey && apiKey.split('.').length === 3) {
+    try { publicKey = JSON.parse(atob(apiKey.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).role === 'anon'; }
+    catch { /* Invalid legacy anon key. */ }
+  }
+  if (!publicKey) throw new ApiError('请使用公开的 publishable key，不能使用管理员密钥', 400);
+}
+
 export class RoomConnection {
-  constructor(onEvent, { endpoint = ROOM_API_URL } = {}) {
+  constructor(onEvent, { endpoint = SUPABASE_URL, apiKey = SUPABASE_PUBLISHABLE_KEY } = {}) {
     this.onEvent = onEvent;
     this.endpoint = endpoint.replace(/\/$/, '');
+    this.apiKey = apiKey;
     this.disposed = false;
     this.connected = false;
     this.requests = new Set();
@@ -28,7 +44,7 @@ export class RoomConnection {
   host(name) {
     this.role = 'host';
     this.name = cleanName(name);
-    void this.start('/rooms');
+    void this.start('create');
   }
 
   join(name, code, resumeToken) {
@@ -37,12 +53,12 @@ export class RoomConnection {
     if (!/^[A-HJ-NP-Z2-9]{8}$/.test(code)) throw new Error('房间码无效');
     this.code = code;
     this.resumeToken = resumeToken;
-    void this.start('/rooms/' + code + '/join');
+    void this.start('join');
   }
 
-  async start(path) {
+  async start(action) {
     try {
-      const data = await this.request(path, { body: { name: this.name, ...(this.resumeToken ? { resumeToken: this.resumeToken } : {}) } });
+      const data = await this.request(action, { name: this.name, ...(this.resumeToken ? { resumeToken: this.resumeToken } : {}) });
       if (this.disposed) return;
       if (typeof data.token !== 'string' || !/^[a-f0-9]{64}$/.test(data.token)) throw new Error('房间服务器返回了无效信息');
       this.token = data.token;
@@ -54,24 +70,28 @@ export class RoomConnection {
     }
   }
 
-  async request(path, { body, method = body ? 'POST' : 'GET' } = {}) {
+  async request(action, body = {}) {
+    checkConfig(this.endpoint, this.apiKey);
     const controller = new AbortController();
     this.requests.add(controller);
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const response = await fetch(this.endpoint + path, {
-        method,
-        headers: {
-          ...(body ? { 'Content-Type': 'application/json' } : {}),
-          ...(this.token ? { Authorization: 'Bearer ' + this.token } : {}),
-        },
-        body: body ? JSON.stringify(body) : undefined,
+      const response = await fetch(this.endpoint + '/rest/v1/rpc/word_meet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: this.apiKey },
+        body: JSON.stringify({ p_request: { action, code: this.code, token: this.token, ...body } }),
         credentials: 'omit', cache: 'no-store', redirect: 'error', signal: controller.signal,
       });
       let data;
       try { data = await response.json(); }
       catch { throw new ApiError('房间服务器返回了无法识别的响应，请稍后重试', response.status >= 500 ? response.status : 503); }
-      if (!response.ok) throw new ApiError(data.error || '房间请求失败', response.status, data.code);
+      if (!response.ok) {
+        const message = /^PT\d{3}$/.test(data.code) ? data.message
+          : data.code === 'PGRST202' || response.status === 404 ? '房间服务尚未初始化，请稍后再试'
+          : [401, 403].includes(response.status) ? '房间服务配置需要更新，请稍后再试'
+          : '房间服务暂时不可用，请稍后重试';
+        throw new ApiError(message, response.status, data.details || data.code);
+      }
       return data;
     } finally {
       clearTimeout(timeout);
@@ -127,7 +147,7 @@ export class RoomConnection {
     this.polling = true;
     let delay = typeof document !== 'undefined' && document.visibilityState === 'hidden' ? 2000 : 750;
     try {
-      const data = await this.request('/rooms/' + this.code + '/poll?after=' + this.after);
+      const data = await this.request('poll', { after: this.after });
       this.applySnapshot(data);
       if (data.messages?.length === 200) delay = 0;
     } catch (error) {
@@ -163,7 +183,7 @@ export class RoomConnection {
         const packet = this.outbox[0];
         if (packet.message.sessionId !== this.sessionId) { this.outbox.shift(); continue; }
         try {
-          await this.request('/rooms/' + this.code + '/messages', { body: packet });
+          await this.request('messages', packet);
           if (this.outbox[0] === packet) this.outbox.shift();
         } catch (error) {
           if (this.disposed) return;
@@ -195,9 +215,9 @@ export class RoomConnection {
     this.requests.clear();
     this.outbox = [];
     if (this.token && this.code) {
-      void fetch(this.endpoint + '/rooms/' + this.code + '/leave', {
-        method: 'POST', headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-        body: JSON.stringify({ token: this.token }), credentials: 'omit', keepalive: true,
+      void fetch(this.endpoint + '/rest/v1/rpc/word_meet', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', apikey: this.apiKey },
+        body: JSON.stringify({ p_request: { action: 'leave', code: this.code, token: this.token } }), credentials: 'omit', keepalive: true,
       }).catch(() => {});
     }
   }

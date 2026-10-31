@@ -13,5 +13,8 @@
     "test": "node --test test/*.test.js",
     "build": "node scripts/build.mjs",
     "preview": "node scripts/serve.mjs --dist"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.14"
   }
 }

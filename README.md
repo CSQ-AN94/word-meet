@@ -2,9 +2,9 @@
 
 双人在线联想游戏。两人分别输入词语，提交后同时揭晓，再结合上轮两个词继续联想，直到词语相同。
 
-[GitHub Pages 入口](https://csq-an94.github.io/word-meet/) · [服务器同源入口](https://word-meet-csq-an94.chirpy-lemur-3231.chatgpt.site/)
+[游戏入口](https://csq-an94.github.io/word-meet/) · [Supabase 注册与接入步骤](docs/supabase-setup.md)
 
-当前发布状态（2026-11-01）：HTTPS 新版已部署到服务器同源入口，线上 D1 表已建立，本地 25 项测试通过。本环境访问公开入口时收到 Cloudflare 403，实际 Safari 访问仍待确认。GitHub Pages 暂时保留旧版发布，尚未切换到新服务。完整验证状态见 [部署检查记录](docs/implementation.md)。
+当前状态（2026-11-01）：源码已改为 Supabase HTTPS 联机，正在等待创建免费项目并填写公开配置。GitHub Pages 仍保留此前发布，尚未切换；不能把本地验证当作线上修复完成。
 
 ## 开始游戏
 
@@ -17,22 +17,21 @@
 
 ## 联机方式
 
-新版通过 HTTPS 房间服务和 Cloudflare D1 同步消息，不再使用 PeerJS、WebRTC、STUN 或 TURN。两位玩家各自访问服务器，不要求相同设备或 Wi‑Fi，也不依赖浏览器之间的 UDP 直连。不需要注册账号或允许第三方 Cookie。
+GitHub Pages 托管网页，Supabase 托管 PostgreSQL 和 HTTPS 接口。两个浏览器分别访问同一个 Supabase 项目，不要求相同设备或 Wi-Fi。回合制消息使用短轮询，不依赖 WebRTC、NAT 穿透、第三方 Cookie 或 WebSocket。
 
-网页资源和源码保存在 GitHub，网页通过 GitHub Pages 发布。服务器同源入口托管同一套网页，API 路径为 `/api`。`src/config.js` 指定房间服务地址。
+- 房间最多两人；数据库事务锁保证同时加入也只能占用一个客人席位。
+- 临时断网自动重试，待发送消息按顺序去重，本轮已提交的词语保留。
+- 游戏时保持页面打开。刷新或手动重新加入会开始新局；原客人可凭本页令牌立即重入。浏览器被直接终止时，客人席位在约 90 秒无活动后可重新加入。
+- 房间两小时无访问即失效，过期房间在后续建房时清理。房主主动离开会关闭房间并删除消息。
+- 使用带随机盐的 SHA-256 承诺值锁词；双方锁定后才交换词语原文并校验。
+- 房间表与消息表在私有 schema 中，启用 RLS 并撤销浏览器角色直接读写权限。公开 RPC 校验独立随机席位令牌，只返回本人所在房间的信息。
+- 浏览器只配置项目 URL 和公开 publishable key；不能使用 secret 或 service_role key。玩游戏的人不需要注册 Supabase。
 
-- 房间最多两人；同时加入也只能占用一个客人席位。
-- 临时断网自动重连，待发送消息按顺序重试并去重，本轮已提交的词语会保留。
-- 游戏时保持页面打开。刷新或手动重新加入会开始新局。关闭页面时会发送退出请求；若浏览器被直接终止，客人席位在约 90 秒无活动后可重新加入。
-- 房间两小时无访问即失效，过期房间会在后续建房时清理。房主主动离开会关闭房间并删除消息。
-- 词语通过带随机盐的 SHA-256 承诺值锁定，绑定对局、局号、轮号和席位；双方锁定后才交换原文并校验。
-- 服务器临时保存房间昵称和转发消息，房间令牌仅保存在当前页面内存中。不要把房间码用于敏感内容。
+Supabase 免费项目低活动一周后可能暂停，项目所有者可在控制台恢复：[官方说明](https://supabase.com/docs/guides/platform/free-project-pausing)。免费额度与限制以 [Supabase 定价](https://supabase.com/pricing) 为准。
 
-旧版依赖浏览器直连，但默认 TURN 地址不代表可用的中继服务：[PeerJS 官方停用公告](https://github.com/orgs/peers/discussions/1172)。这次改为普通 HTTPS，以去除跨网络连接对 NAT 穿透的依赖。升级后两人都应刷新网页并重新建房，旧版房间码不能迁移。
+## 本地检查
 
-## 本地开发与检查
-
-需要 Node.js 22.13 或以上版本。前端没有第三方运行依赖。
+需要 Node.js 22.13 或以上版本。前端没有第三方运行依赖，PGlite 仅用于测试实际 PostgreSQL 初始化脚本。
 
 ```sh
 npm ci --ignore-scripts
@@ -40,23 +39,23 @@ npm test
 npm run dev
 ```
 
-`npm run dev` 仅监听本机。前端默认连接线上房间服务；接口测试使用真实本地 HTTP 服务和 SQLite，无需线上账户。
+开发预览仅监听本机。配置 Supabase 后可以直接联机；自动化测试使用本地 PostgreSQL 和真实 HTTP，不需要线上账户。
 
 ```sh
 npm run build
 npm run preview
 ```
 
-构建产物位于 `dist/`，使用相对路径，支持 GitHub Pages 子路径。构建时为整个 JavaScript 模块图和 CSS 生成统一的内容版本，避免旧版联机脚本被缓存。
+`dist/` 使用相对路径，支持 GitHub Pages 子路径。构建时为完整 JavaScript 模块图和 CSS 生成统一内容版本，防止旧版联机脚本缓存。
 
-## 部署与文件
+## 文件与发布
 
 - `src/game.js`：提交、揭晓、胜利与准备协议。
-- `src/room.js`：HTTPS 房间客户端、顺序发送、轮询及自动恢复。
-- `server/api.js`：房间服务，使用标准 Request/Response 和 D1 接口。
-- `server/schema.sql`：与服务端迁移一致的数据库结构。
-- `test/`：协议、HTTP 联机、并发加入、鉴权、断网恢复和缓存测试。
+- `src/room.js`：Supabase HTTPS RPC、顺序发送、轮询及自动恢复。
+- `src/config.js`：项目 URL 与公开 publishable key。
+- `supabase/setup.sql`：私有表、权限与房间 RPC，可重复执行。
+- `test/`：实际 PostgreSQL、HTTP 双人对局、网络恢复、权限、公开配置与缓存检查。
 
-GitHub 仓库的 `main` 保存源代码，`gh-pages` 保存 `dist/` 构建产物。Pages Source 为 **Deploy from a branch → gh-pages → / (root)**。`docs/pages-workflow.example.yml` 保留可选 Actions 部署示例；当前发布不需要增加 GitHub workflow 授权。
+GitHub 仓库的 `main` 保存源码，`gh-pages` 保存 `dist/`。Pages Source 为 **Deploy from a branch → gh-pages → / (root)**。`docs/pages-workflow.example.yml` 保留可选 Actions 示例；当前发布不需要增加 GitHub workflow 授权。
 
-服务器部署工程位于同级 `word-meet-server`，通过 Sites 托管并声明 D1 的 `DB` 绑定。生成数据库迁移后构建并发布；`scripts/sync-game.mjs` 将本项目的构建产物和 `server/api.js` 同步到服务器工程。服务端的房间令牌鉴权独立于托管平台账户，不要求玩家登录 ChatGPT。
+完成 [接入步骤](docs/supabase-setup.md)、确认公开接口与跨设备对局正常后再发布。旧版房间码不迁移，两人应刷新网页并重新建房。

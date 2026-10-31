@@ -1,240 +1,224 @@
-const PREFIX = 'word-meet-v1-';
-const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js?v=6208c17a40e2';
 
 export function cleanName(value) {
-  if (typeof value !== 'string') throw new Error('给自己起一个昵称吧');
+  if (typeof value !== 'string') throw new Error('请输入昵称');
   const name = value.trim();
   if (!name || [...name].length > 12 || /[\u0000-\u001f\u007f]/u.test(name)) throw new Error('昵称请写 1–12 个字');
   return name;
 }
 
+class ApiError extends Error {
+  constructor(message, status, code) { super(message); this.status = status; this.code = code; }
+}
+
+function checkConfig(endpoint, apiKey) {
+  if (!endpoint || !apiKey) throw new ApiError('房间服务尚未开通，请稍后再试', 400);
+  let url;
+  try { url = new URL(endpoint); } catch { throw new ApiError('房间服务地址配置无效，请稍后再试', 400); }
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if (url.protocol !== 'https:' && !(local && url.protocol === 'http:')) throw new ApiError('房间服务地址需要使用 HTTPS', 400);
+  if (url.pathname !== '/' || url.search || url.hash || url.username || url.password) throw new ApiError('房间服务地址配置无效，请稍后再试', 400);
+  let publicKey = /^sb_publishable_[A-Za-z0-9_-]+$/.test(apiKey);
+  if (!publicKey && apiKey.split('.').length === 3) {
+    try { publicKey = JSON.parse(atob(apiKey.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).role === 'anon'; }
+    catch { /* Invalid legacy anon key. */ }
+  }
+  if (!publicKey) throw new ApiError('请使用公开的 publishable key，不能使用管理员密钥', 400);
+}
+
 export class RoomConnection {
-  constructor(onEvent) {
+  constructor(onEvent, { endpoint = SUPABASE_URL, apiKey = SUPABASE_PUBLISHABLE_KEY } = {}) {
     this.onEvent = onEvent;
-    this.peer = null;
-    this.connection = null;
+    this.endpoint = endpoint.replace(/\/$/, '');
+    this.apiKey = apiKey;
     this.disposed = false;
     this.connected = false;
-    this.handshakes = new Set();
-    this.timers = new Set();
-    this.reconnectAttempts = 0;
+    this.requests = new Set();
+    this.outbox = [];
+    this.after = 0;
+    this.failures = 0;
+    this.networkUnavailable = false;
+    this.peerOffline = false;
   }
 
-  later(callback, delay) {
-    const timer = setTimeout(() => { this.timers.delete(timer); if (!this.disposed) callback(); }, delay);
-    this.timers.add(timer);
-    return timer;
-  }
-
-  cancel(timer) {
-    clearTimeout(timer);
-    this.timers.delete(timer);
-  }
-
-  host(name, code) {
+  host(name) {
     this.role = 'host';
     this.name = cleanName(name);
-    this.code = code || Array.from(crypto.getRandomValues(new Uint8Array(8)), (byte) => ALPHABET[byte % 32]).join('');
-    this.openPeer(PREFIX + this.code);
+    void this.start('create');
   }
 
-  join(name, code) {
+  join(name, code, resumeToken) {
     this.role = 'guest';
     this.name = cleanName(name);
+    if (!/^[A-HJ-NP-Z2-9]{8}$/.test(code)) throw new Error('房间码无效');
     this.code = code;
-    this.openPeer();
+    this.resumeToken = resumeToken;
+    void this.start('join');
   }
 
-  openPeer(id) {
-    if (!globalThis.Peer || !globalThis.RTCPeerConnection || !crypto.subtle) {
-      this.fail('当前浏览器不支持联机，请用新版 Safari、Chrome 或 Edge 打开 HTTPS 链接。');
-      return;
+  async start(action) {
+    try {
+      const data = await this.request(action, { name: this.name, ...(this.resumeToken ? { resumeToken: this.resumeToken } : {}) });
+      if (this.disposed) return;
+      if (typeof data.token !== 'string' || !/^[a-f0-9]{64}$/.test(data.token)) throw new Error('房间服务器返回了无效信息');
+      this.token = data.token;
+      this.code = data.code;
+      this.applySnapshot(data);
+      this.schedule(0);
+    } catch (error) {
+      if (!this.disposed) this.fail(error instanceof ApiError ? error.message : '暂时无法连接房间服务器，请稍后重试');
     }
-    const peer = new globalThis.Peer(id, { secure: true, debug: 0 });
-    this.peer = peer;
-    let opened = false;
-    const timeout = this.later(() => this.fail('连接服务暂时没有回应，请检查网络后重试。'), 25000);
-    peer.on('open', () => {
-      if (this.disposed || peer !== this.peer) return;
-      this.cancel(timeout);
-      this.reconnectAttempts = 0;
-      if (opened) {
-        this.onEvent({ type: 'signaling-restored' });
-        return;
-      }
-      opened = true;
-      if (this.role === 'host') {
-        this.onEvent({ type: 'waiting', code: this.code });
-      } else {
-        const connection = peer.connect(PREFIX + this.code, { reliable: true, serialization: 'json', label: 'word-meet-v1' });
-        this.attach(connection, false);
-      }
-    });
-    peer.on('connection', (connection) => {
-      if (this.disposed || peer !== this.peer) return connection.close();
-      if (this.role !== 'host') return connection.close();
-      this.attach(connection, true);
-    });
-    peer.on('disconnected', () => {
-      if (this.disposed || peer !== this.peer) return;
-      if (!this.connected) this.onEvent({ type: 'signaling', message: '连接服务暂时断开，正在恢复…' });
-      this.reconnectSignaling(peer);
-    });
-    peer.on('error', (error) => {
-      if (this.disposed || peer !== this.peer) return;
-      if (error.type === 'unavailable-id' && this.role === 'host' && !this.connected) {
-        this.cancel(timeout);
-        peer.destroy();
-        if ((this.collisions = (this.collisions || 0) + 1) < 4) this.host(this.name);
-        else this.fail('房间创建失败，请稍后重试。');
-        return;
-      }
-      if (this.connected && ['network', 'socket-error', 'server-error'].includes(error.type)) return;
-      const messages = {
-        'peer-unavailable': '找不到这个房间。请检查房间码，并确认房主还开着页面。',
-        'browser-incompatible': '这个浏览器暂不支持联机，请换一个新版浏览器。',
-        'network': '暂时连接不到联机服务，请检查网络后重试。',
-        'webrtc': '两人的网络没能连通。可以换一个网络，再重新加入。',
-        'socket-error': '联机服务连接失败，请稍后重试。',
-      };
-      this.fail(messages[error.type] || '连接暂时出了点问题，请重新试一次。');
-    });
   }
 
-  reconnectSignaling(peer) {
-    if (this.reconnectAttempts >= 4) {
-      if (!this.connected) this.fail('连接服务恢复失败，请重新创建或加入房间。');
-      return;
+  async request(action, body = {}) {
+    checkConfig(this.endpoint, this.apiKey);
+    const controller = new AbortController();
+    this.requests.add(controller);
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(this.endpoint + '/rest/v1/rpc/word_meet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: this.apiKey },
+        body: JSON.stringify({ p_request: { action, code: this.code, token: this.token, ...body } }),
+        credentials: 'omit', cache: 'no-store', redirect: 'error', signal: controller.signal,
+      });
+      let data;
+      try { data = await response.json(); }
+      catch { throw new ApiError('房间服务器返回了无法识别的响应，请稍后重试', response.status >= 500 ? response.status : 503); }
+      if (!response.ok) {
+        const message = /^PT\d{3}$/.test(data.code) ? data.message
+          : data.code === 'PGRST202' || response.status === 404 ? '房间服务尚未初始化，请稍后再试'
+          : [401, 403].includes(response.status) ? '房间服务配置需要更新，请稍后再试'
+          : '房间服务暂时不可用，请稍后重试';
+        throw new ApiError(message, response.status, data.details || data.code);
+      }
+      return data;
+    } finally {
+      clearTimeout(timeout);
+      this.requests.delete(controller);
     }
-    this.later(() => {
-      if (peer !== this.peer || peer.destroyed || !peer.disconnected) return;
-      this.reconnectAttempts++;
-      peer.reconnect();
-      this.reconnectSignaling(peer);
-    }, 1800 * (this.reconnectAttempts + 1));
   }
 
-  attach(connection, incoming) {
-    this.handshakes.add(connection);
-    let accepted = false;
-    let rejected = false;
-    const deadline = this.later(() => {
-      connection.close();
-      if (!incoming && !this.connected) this.fail('两人的网络没能连通。请让房主保持页面打开，也可以换个网络再试。');
-    }, 25000);
-
-    const reject = (message) => {
-      rejected = true;
-      this.cancel(deadline);
-      if (connection.open) connection.send({ type: 'reject', message });
-      this.later(() => connection.close(), 300);
-    };
-
-    connection.on('open', () => {
-      if (this.disposed) return connection.close();
-      if (!incoming) connection.send({ type: 'hello', v: 1, name: this.name });
-    });
-    connection.on('data', (message) => {
-      if (this.disposed || rejected) return;
-      if (!message || typeof message !== 'object' || Array.isArray(message) || JSON.stringify(message).length > 4096) {
-        if (!accepted) reject('收到的房间信息无效，请重新加入。');
-        else this.fail('对方发送了无效信息，请重新连接。');
-        return;
+  applySnapshot(data) {
+    if (this.disposed) return;
+    if (!data || !/^[A-HJ-NP-Z2-9]{8}$/.test(data.code) || ![0, 1].includes(data.seat) || !Array.isArray(data.names)) throw new Error('房间信息无效');
+    this.code = data.code;
+    const recovered = this.networkUnavailable;
+    this.networkUnavailable = false;
+    this.failures = 0;
+    if (data.sessionId && data.sessionId !== this.sessionId) {
+      this.sessionId = data.sessionId;
+      this.connected = true;
+      this.after = 0;
+      this.outbox = this.outbox.filter((packet) => packet.message.sessionId === this.sessionId);
+      this.onEvent({ type: 'connected', code: this.code, seat: data.seat, otherName: data.names[1 - data.seat], sessionId: this.sessionId });
+    } else if (!data.sessionId && this.sessionId) {
+      this.sessionId = null;
+      this.connected = false;
+      this.after = 0;
+      this.outbox = [];
+      this.onEvent({ type: 'disconnected', message: '对方已离开房间。可以通过原房间码重新加入，开始新的一局。' });
+    } else if (!data.sessionId && !this.waitingAnnounced) {
+      this.waitingAnnounced = true;
+      this.onEvent({ type: 'waiting', code: this.code });
+    }
+    if (this.connected) {
+      if (!data.peerOnline && !this.peerOffline) {
+        this.peerOffline = true;
+        this.onEvent({ type: 'peer-offline', message: '对方暂时离线，正在等待恢复。请双方保持游戏页面打开。' });
+      } else if (data.peerOnline && (this.peerOffline || recovered)) {
+        this.peerOffline = false;
+        this.onEvent({ type: 'online', connected: true });
       }
-      if (!accepted) {
-        if (!incoming && message.type === 'reject') {
-          this.fail(typeof message.message === 'string' ? message.message.slice(0, 150) : '暂时不能加入这个房间。');
-          return;
-        }
-        try {
-          if (incoming) {
-            if (message.type !== 'hello' || message.v !== 1) return reject('游戏版本不一致，请刷新后重新加入。');
-            const otherName = cleanName(message.name);
-            if (this.connection?.open) return reject('房间已经有两个人啦，请让朋友创建一个新房间。');
-            this.sessionId = crypto.randomUUID();
-            connection.send({ type: 'welcome', v: 1, sessionId: this.sessionId, name: this.name });
-            this.accept(connection, otherName, 0);
-          } else {
-            if (message.type !== 'welcome' || message.v !== 1 || typeof message.sessionId !== 'string' ||
-                !/^[a-zA-Z0-9-]{1,80}$/.test(message.sessionId)) return this.fail('房间信息无效，请重新加入。');
-            this.sessionId = message.sessionId;
-            this.accept(connection, cleanName(message.name), 1);
-          }
-          accepted = true;
-          this.cancel(deadline);
-        } catch (error) {
-          if (incoming) reject(error.message);
-          else this.fail(error.message);
-        }
-        return;
-      }
-      if (connection !== this.connection) return;
-      this.lastSeen = Date.now();
-      if (message.type === 'ping') return connection.send({ type: 'pong' });
-      if (message.type === 'pong') return;
-      this.onEvent({ type: 'message', message });
-    });
-    connection.on('close', () => {
-      this.cancel(deadline);
-      this.handshakes.delete(connection);
-      if (this.disposed || rejected) return;
-      if (connection === this.connection) {
-        this.connection = null;
-        this.connected = false;
-        clearInterval(this.heartbeat);
-        this.onEvent({ type: 'disconnected', message: this.role === 'host'
-          ? '朋友的连接已断开。让 TA 用原链接重新加入，就能开始新的一局。'
-          : '和房主的连接断开了。重新连接会开始新的一局。' });
-      } else if (!incoming && !accepted && !this.failed) this.fail('没能加入房间，请检查房间码和网络后重试。');
-    });
-    connection.on('error', () => {
-      if (connection === this.connection) connection.close();
-      else if (!incoming && !this.disposed) this.fail('连接没有建立成功，请换个网络再试。');
-    });
+    } else if (recovered) this.onEvent({ type: 'online', connected: false });
+    for (const entry of data.messages || []) this.onEvent({ type: 'message', message: entry.message });
+    this.after = Math.max(this.after, Number(data.after) || 0);
+    void this.flush();
   }
 
-  accept(connection, otherName, seat) {
-    this.connection = connection;
-    this.connected = true;
-    this.lastSeen = Date.now();
-    clearInterval(this.heartbeat);
-    this.heartbeat = setInterval(() => {
-      if (!this.connection?.open) return;
-      if (document.visibilityState === 'visible' && Date.now() - this.lastSeen > 60000) {
-        this.connection.close();
-        return;
-      }
-      this.connection.send({ type: 'ping' });
-    }, 8000);
-    this.onEvent({ type: 'connected', code: this.code, seat, otherName, sessionId: this.sessionId });
+  schedule(delay = 750) {
+    if (this.disposed) return;
+    clearTimeout(this.pollTimer);
+    this.pollTimer = setTimeout(() => void this.poll(), delay);
   }
 
-  ping() {
-    this.lastSeen = Date.now();
-    if (this.connection?.open) this.connection.send({ type: 'ping' });
+  async poll() {
+    if (this.disposed || this.polling || !this.token) return;
+    this.polling = true;
+    let delay = typeof document !== 'undefined' && document.visibilityState === 'hidden' ? 2000 : 750;
+    try {
+      const data = await this.request('poll', { after: this.after });
+      this.applySnapshot(data);
+      if (data.messages?.length === 200) delay = 0;
+    } catch (error) {
+      if (!this.disposed) {
+        if (error instanceof ApiError && [400, 401, 403, 404].includes(error.status)) return this.fail(error.message);
+        this.markUnavailable();
+        delay = Math.min(6000, 750 * 2 ** Math.min(this.failures, 3));
+      }
+    } finally {
+      this.polling = false;
+      this.schedule(delay);
+    }
+  }
+
+  markUnavailable() {
+    this.failures++;
+    if (this.networkUnavailable || this.disposed) return;
+    this.networkUnavailable = true;
+    this.onEvent({ type: 'retrying', message: '与房间服务器的连接暂时中断，正在自动恢复。已提交的词语会保留。' });
   }
 
   send(message) {
-    if (!this.connection?.open || !this.connected) throw new Error('连接已断开，请先重新连接');
-    this.connection.send(message);
+    if (this.disposed || !this.token || !this.sessionId) throw new Error('当前未连接房间，请重新加入');
+    this.outbox.push({ id: crypto.randomUUID(), message });
+    void this.flush();
   }
 
+  async flush() {
+    if (this.flushing || this.disposed || !this.token) return;
+    this.flushing = true;
+    try {
+      while (this.outbox.length && !this.disposed) {
+        const packet = this.outbox[0];
+        if (packet.message.sessionId !== this.sessionId) { this.outbox.shift(); continue; }
+        try {
+          await this.request('messages', packet);
+          if (this.outbox[0] === packet) this.outbox.shift();
+        } catch (error) {
+          if (this.disposed) return;
+          if (error instanceof ApiError && error.code === 'SESSION_CHANGED') {
+            this.outbox = this.outbox.filter((entry) => entry.message.sessionId !== packet.message.sessionId);
+            this.schedule(0);
+          } else if (error instanceof ApiError && [400, 401, 403, 404, 409].includes(error.status)) this.fail(error.message);
+          else this.markUnavailable();
+          return;
+        }
+      }
+    } finally { this.flushing = false; }
+  }
+
+  ping() { this.schedule(0); }
+
   fail(message) {
-    if (this.disposed || this.failed) return;
-    this.failed = true;
+    if (this.disposed) return;
     this.onEvent({ type: 'error', message });
     this.dispose();
   }
 
   dispose() {
+    if (this.disposed) return;
     this.disposed = true;
     this.connected = false;
-    for (const timer of this.timers) clearTimeout(timer);
-    this.timers.clear();
-    clearInterval(this.heartbeat);
-    for (const connection of this.handshakes) connection.close();
-    this.handshakes.clear();
-    this.connection?.close();
-    this.peer?.destroy();
+    clearTimeout(this.pollTimer);
+    for (const controller of this.requests) controller.abort();
+    this.requests.clear();
+    this.outbox = [];
+    if (this.token && this.code) {
+      void fetch(this.endpoint + '/rest/v1/rpc/word_meet', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', apikey: this.apiKey },
+        body: JSON.stringify({ p_request: { action: 'leave', code: this.code, token: this.token } }), credentials: 'omit', keepalive: true,
+      }).catch(() => {});
+    }
   }
 }

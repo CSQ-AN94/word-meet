@@ -18,6 +18,12 @@
 
 保留的限制：首次创建或加入成功但响应丢失时，客户端无法恢复尚未收到的席位令牌；客人席位最多需要约 90 秒释放。自动重试覆盖已建立的连接与待发送消息。
 
-待用户完成注册并创建免费项目后，还需应用初始化脚本、填入公开配置、检查匿名公开接口和跨来源请求，再切换 GitHub Pages。实际 Safari 和同学设备的跨网络可达性仍需确认。
+2026-11-01：用户已连接 Supabase 并选择组织 `CSQ-AN94's Org`。免费项目 `word-meet` 已创建于新加坡，项目 ID 为 `dmprudhtcvhbfavzxirz`；已应用 `word_meet_rooms` 初始化迁移并配置公开 publishable key。
+
+真实公网检查通过：health 返回 200/protocol 3；来自 GitHub Pages 的 CORS 与预检正常；两个并发加入返回 200/409；错误席位令牌返回 401；重复消息只收到一次；通过 Data API 直接访问私有 schema 返回 406。测试房间已用本次生成的房主令牌关闭。
+
+数据库权限检查确认：两张表均启用 RLS，anon/authenticated 均无直接表权限，anon 无私有 schema 的 USAGE 权限，只能调用公开房间函数。当前 Advisors 的“RLS 无策略”提示对应故意封闭的私有表；公开 SECURITY DEFINER 提示对应使用席位令牌鉴权的房间接口，并非 Supabase Auth 用户接口。函数固定空 search_path，轮询、发消息与退出前均校验令牌。参考 [私有表无策略提示](https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy)、[匿名可执行函数提示](https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable) 和 [已登录用户可执行函数提示](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)。新建表的索引尚未有使用统计，保留用于消息轮询与过期清理。
+
+下一步切换 GitHub Pages 并验证公开网页对局。实际 Safari 和同学设备的跨网络可达性仍需由他们确认。
 
 先前 Sites 部署虽返回成功，但公开访问在自动验证与用户 Safari 均返回 Cloudflare 403；已停止访问该入口，也没有把 GitHub Pages 指向它。

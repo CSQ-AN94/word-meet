@@ -4,6 +4,8 @@
 
 [GitHub Pages 入口](https://csq-an94.github.io/word-meet/) · [服务器同源入口](https://word-meet-csq-an94.chirpy-lemur-3231.chatgpt.site/)
 
+当前发布状态（2026-11-01）：HTTPS 新版已部署到服务器同源入口，线上 D1 表已建立，本地 25 项测试通过。本环境访问公开入口时收到 Cloudflare 403，实际 Safari 访问仍待确认。GitHub Pages 暂时保留旧版发布，尚未切换到新服务。完整验证状态见 [部署检查记录](docs/implementation.md)。
+
 ## 开始游戏
 
 1. 一人输入昵称并创建房间，复制邀请链接或房间码给另一人。
